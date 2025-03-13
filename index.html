@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通义万象文生图</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            resize: vertical;
+            min-height: 100px;
+            font-size: 14px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .results {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .image-container {
+            position: relative;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .image-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .download-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            width: auto;
+        }
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #fdf0ed;
+            border-radius: 6px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>xz接通义生图API演示</h1>
+        
+        <div class="form-group">
+            <label for="prompt">提示词：</label>
+            <textarea id="prompt" placeholder="请输入详细的提示词，描述您想要生成的图片内容..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="negative-prompt">反向提示词（可选）：</label>
+            <textarea id="negative-prompt" placeholder="请输入您不希望在图片中出现的元素..."></textarea>
+        </div>
+        
+
+        
+        <button id="generate-btn" onclick="generateImage()">生成图片</button>
+        
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>正在生成图片，请稍候...</p>
+        </div>
+        
+        <div class="error"></div>
+        
+        <div class="results"></div>
+    </div>
+
+    <script>
+        async function generateImage() {
+            const prompt = document.getElementById('prompt').value;
+            const negativePrompt = document.getElementById('negative-prompt').value;
+            
+            if (!prompt) {
+                alert('请输入提示词');
+                return;
+            }
+
+            const generateBtn = document.getElementById('generate-btn');
+            const loading = document.querySelector('.loading');
+            const results = document.querySelector('.results');
+            const error = document.querySelector('.error');
+
+            generateBtn.disabled = true;
+            loading.style.display = 'block';
+            results.innerHTML = '';
+            error.style.display = 'none';
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt,
+                        negative_prompt: negativePrompt
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`请求失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                if (data.results) {
+                    data.results.forEach(result => {
+                        const container = document.createElement('div');
+                        container.className = 'image-container';
+                        
+                        const img = document.createElement('img');
+                        img.src = result.url;
+                        img.alt = '生成的图片';
+                        
+                        const downloadBtn = document.createElement('button');
+                        downloadBtn.className = 'download-btn';
+                        downloadBtn.textContent = '下载';
+                        downloadBtn.onclick = () => {
+                            const a = document.createElement('a');
+                            a.href = result.url;
+                            a.download = 'generated-image.png';
+                            a.click();
+                        };
+                        
+                        container.appendChild(img);
+                        container.appendChild(downloadBtn);
+                        results.appendChild(container);
+                    });
+                }
+            } catch (err) {
+                error.textContent = `错误：${err.message}`;
+                error.style.display = 'block';
+            } finally {
+                generateBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
