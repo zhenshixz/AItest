@@ -1,0 +1,4 @@
+flask
+requests
+dashscope
+gunicorn==21.2.0
